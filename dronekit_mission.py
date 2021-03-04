@@ -39,7 +39,7 @@ if args.connect:
 ################################################################################################
 
 # Connect to the Vehicle
-print("Connecting to vehicle...")
+print("Connecting to vehicle...\n\n")
 
 result = None
 while result is None:
@@ -49,7 +49,7 @@ while result is None:
     except:
             pass
 
-print("Connected")
+print("\n\nConnected to Vehicle\n\n")
 
 
 ### KC: GUI thread to run concurrently
@@ -102,11 +102,15 @@ def XBee_thread():
     result = None
     while result is None:
         try:
+            print("Connecting to XBee...")
+            time.sleep(1)
             ser = serial.Serial('/dev/ttyUSB0')
+            ser.baudrate = 9600
             result = 1
         except:
              pass
-    
+
+    print("\n\nConnected to XBee\n\n")    
 
     while True:
     ##serial code to read inputs
@@ -120,7 +124,7 @@ def XBee_thread():
         zoon_lat = float(x_dict[2])
         zoon_lon = float(x_dict[3])
         zoon_bearing = float(x_dict[4])
-        zoon_vel = float(x_dict[5])
+        temp_vel = float(x_dict[5])
         zoon_alt = float(x_dict[6])
         
    
@@ -138,6 +142,11 @@ def XBee_thread():
             offset_brg = 270
         elif comd_brg == "N4":
             offset_brg = 90
+
+        if temp_vel < 1:
+            zoon_vel = 1
+        elif temp_vel >= 1:
+            zoon_vel = temp_vel
 
 def PX4setMode(mavMode):
     vehicle._master.mav.command_long_send(vehicle._master.target_system, vehicle._master.target_component,
@@ -234,6 +243,8 @@ while True:
     X, Y, Z = get_location_offset_meters(zoon_lat, zoon_lon, zoon_alt, dN, dE, 10)
 
     a_location = LocationGlobalRelative(X, Y, Z) #1.2997019688080589, 103.78722860926898
+    vehicle.simple_goto(a_location)
+    vehicle.airspeed = zoon_vel
     print("Going to location (lat: %.6f, lon: %.6f, alt: %f)" %(X, Y, Z))
     print("Offset Dist: %f, Offset Bearing: %f" %(offset_dist, offset_brg))
 
