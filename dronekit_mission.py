@@ -19,7 +19,7 @@ import threading
 ################################################################################################
 
 #connection_string       = '127.0.0.1:14540'
-connection_string       = '/dev/ttyUSB0'
+connection_string       = '/dev/ttyACM0'
 
 MAV_MODE_AUTO   = 4
 # https://github.com/PX4/PX4-Autopilot/blob/master/Tools/mavlink_px4.py
@@ -41,6 +41,7 @@ if args.connect:
 # Connect to the Vehicle
 print("Connecting to vehicle...")
 
+result = None
 while result is None:
     try:
         vehicle = connect(connection_string, wait_ready=True, baud=57600)
@@ -97,11 +98,11 @@ def XBee_thread():
     zoon_lon = 103.78722860926898
 
     print("Connecting to XBee...")
-
+    
     result = None
     while result is None:
         try:
-            ser = serial.Serial('/dev/ttyUSB1')
+            ser = serial.Serial('/dev/ttyUSB0')
             result = 1
         except:
              pass
@@ -111,6 +112,8 @@ def XBee_thread():
     ##serial code to read inputs
         x = ser.readline()
         x_dict = x.split(",")
+        print("XBee Reading: ")
+        print(x_dict)
         
         comd_brg = x_dict[0]
         comd_dist = x_dict[1]
