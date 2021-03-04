@@ -19,7 +19,7 @@ import threading
 ################################################################################################
 
 #connection_string       = '127.0.0.1:14540'
-connection_string       = '/dev/ttyUSB1'
+connection_string       = '/dev/ttyUSB0'
 
 MAV_MODE_AUTO   = 4
 # https://github.com/PX4/PX4-Autopilot/blob/master/Tools/mavlink_px4.py
@@ -39,8 +39,16 @@ if args.connect:
 ################################################################################################
 
 # Connect to the Vehicle
-print("Connecting")
-vehicle = connect(connection_string, wait_ready=True, baud=57600)
+print("Connecting to vehicle...")
+
+while result is None:
+    try:
+        vehicle = connect(connection_string, wait_ready=True, baud=57600)
+        result = 1
+    except:
+            pass
+
+print("Connected")
 
 
 ### KC: GUI thread to run concurrently
@@ -66,6 +74,7 @@ def GUI_thread():
 
     print("\n\n\nGUI closed!\n\n\n")
 
+### KC: GPS thread to run concurrently
 def GPS_thread():
     global zoon_lat, zoon_lon, zoon_alt, zoon_bearing, wp, target_x, target_y, target_z
     zoon_lat = 1.2997019688080589
@@ -80,6 +89,52 @@ def GPS_thread():
         #target_x, target_y, d = Haversine_XY(wp.lat, wp.lon, zoon_lat, zoon_lon)
         #print("X: %f,  Y: %f" %(target_x, target_y))
 
+### KC: Serial thread to read instructions
+def XBee_thread():
+    global zoon_lat, zoon_lon, zoon_alt, zoon_bearing, offset_dist, offset_brg, zoon_vel
+
+    zoon_lat = 1.2997019688080589
+    zoon_lon = 103.78722860926898
+
+    print("Connecting to XBee...")
+
+    result = None
+    while result is None:
+        try:
+            ser = serial.Serial('/dev/ttyUSB1')
+            result = 1
+        except:
+             pass
+    
+
+    while True:
+    ##serial code to read inputs
+        x = ser.readline()
+        x_dict = x.split(",")
+        
+        comd_brg = x_dict[0]
+        comd_dist = x_dict[1]
+        zoon_lat = float(x_dict[2])
+        zoon_lon = float(x_dict[3])
+        zoon_bearing = float(x_dict[4])
+        zoon_vel = float(x_dict[5])
+        zoon_alt = float(x_dict[6])
+        
+   
+        
+
+        if comd_dist == "E":
+            offset_dist = 10
+        elif comd_dist == "E10":
+            offset_dist = 20
+        elif comd_brg == "N1":
+            offset_brg = 180
+        elif comd_brg == "N2":
+            offset_brg = 0
+        elif comd_brg == "N3":
+            offset_brg = 270
+        elif comd_brg == "N4":
+            offset_brg = 90
 
 def PX4setMode(mavMode):
     vehicle._master.mav.command_long_send(vehicle._master.target_system, vehicle._master.target_component,
@@ -125,6 +180,7 @@ zoon_lat = 0
 zoon_lon = 0
 zoon_alt = 20
 zoon_bearing = 0
+zoon_vel = 1
 target_x = 0
 target_y = 0
 target_z = 0
@@ -137,11 +193,14 @@ vehicle.armed = True
 ################################################################################################
 
 ### KC: start threads ###
-x = threading.Thread(target=GUI_thread)
-x.start()
+#x = threading.Thread(target=GUI_thread)
+#x.start()
 
-y = threading.Thread(target=GPS_thread)
-y.start()
+#y = threading.Thread(target=GPS_thread)
+#y.start()
+
+x = threading.Thread(target=XBee_thread)
+x.start()
 
 
 # Display basic vehicle state
